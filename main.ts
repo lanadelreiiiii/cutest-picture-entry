@@ -7,7 +7,17 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-copyFileSync(new URL('./entry.png', import.meta.url), join(process.env.MAKEFUN_OUTPUT_DIR ?? '/output', 'entry.png'));
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+mkdirSync(outDir, { recursive: true });
+const outPath = join(outDir, 'entry.png');
+copyFileSync(new URL('./entry.png', import.meta.url), outPath);
+// Guardrail: the brief caps the image at 1 MiB — fail loudly instead of
+// shipping a too-large file if the picture is ever swapped.
+const bytes = statSync(outPath).size;
+if (!existsSync(outPath) || bytes > 1048576) {
+  throw new Error(`entry.png invalid: ${bytes} bytes (limit 1048576)`);
+}
+console.log(`wrote ${outPath} (${bytes} bytes)`);
